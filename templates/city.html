@@ -228,53 +228,51 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Инициализация Яндекс.Карт для города
-        ymaps.ready(function() {
-            const cityMap = new ymaps.Map('cityMap', {
-                center: [51.527623, 81.217673],
-                zoom: 13,
-                controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
-            });
-            
-            // Добавляем основные достопримечательности
-            const landmarks = [
-                {
-                    name: "Центр города",
-                    coords: [51.527623, 81.217673],
-                    description: "Административный и культурный центр"
-                },
-                {
-                    name: "Парк культуры и отдыха",
-                    coords: [51.529, 81.215],
-                    description: "Главный зелёный массив города"
-                },
-                {
-                    name: "Мемориал Славы",
-                    coords: [51.526, 81.222],
-                    description: "Монумент в честь героев ВОВ"
-                },
-                {
-                    name: "Драматический театр",
-                    coords: [51.530, 81.210],
-                    description: "Культурный центр города"
-                },
-                {
-                    name: "Набережная реки Алей",
-                    coords: [51.525, 81.230],
-                    description: "Живописное место для прогулок"
-                }
-            ];
-            
-            landmarks.forEach(landmark => {
-                new ymaps.Placemark(landmark.coords, {
-                    balloonContent: `<strong>${landmark.name}</strong><br>${landmark.description}`
-                }, {
-                    preset: 'islands#blueIcon'
-                }).addTo(cityMap);
-            });
-        });
+document.addEventListener('DOMContentLoaded', function() {
+    // Инициализация карты Рубцовска
+    const cityMap = L.map('cityMap').setView([51.527623, 81.217673], 13);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(cityMap);
+    
+    // Добавляем основные достопримечательности
+    const landmarks = [
+        {
+            name: "Центр города",
+            coords: [51.527623, 81.217673],
+            description: "Административный и культурный центр"
+        },
+        {
+            name: "Парк культуры и отдыха",
+            coords: [51.529, 81.215],
+            description: "Главный зелёный массив города"
+        },
+        {
+            name: "Мемориал Славы",
+            coords: [51.526, 81.222],
+            description: "Монумент в честь героев ВОВ"
+        },
+        {
+            name: "Драматический театр",
+            coords: [51.530, 81.210],
+            description: "Культурный центр города"
+        },
+        {
+            name: "Набережная реки Алей",
+            coords: [51.525, 81.230],
+            description: "Живописное место для прогулок"
+        }
+    ];
+    
+    landmarks.forEach(landmark => {
+        L.marker(landmark.coords)
+            .addTo(cityMap)
+            .bindPopup(`<strong>${landmark.name}</strong><br>${landmark.description}`);
     });
+});
 </script>
 {% endblock %}
