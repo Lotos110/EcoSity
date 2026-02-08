@@ -7,6 +7,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Подключение Яндекс.Карт API с вашим ключом -->
+    <script src="https://api-maps.yandex.ru/2.1/?apikey={{ config.YANDEX_MAP_API_KEY }}&lang=ru_RU" type="text/javascript"></script>
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -168,24 +172,64 @@
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Удален Leaflet скрипт -->
+    <!-- <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> -->
+    <!-- Удален main.js, так как функциональность перенесена сюда -->
+    <!-- <script src="{{ url_for('static', filename='js/main.js') }}"></script> -->
+    
     <script>
-        // Инициализация карты в модальном окне
+        // Инициализация карты в модальном окне с Яндекс.Картами
         document.addEventListener('DOMContentLoaded', function() {
             const modal = document.getElementById('addIdeaModal');
             if (modal) {
                 modal.addEventListener('shown.bs.modal', function() {
                     if (!window.pickerMap) {
-                        window.pickerMap = L.map('mapPicker').setView([51.527623, 81.217673], 14);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                            attribution: '© OpenStreetMap'
-                        }).addTo(window.pickerMap);
-                        
-                        window.pickerMap.on('click', function(e) {
-                            document.getElementById('latitude').value = e.latlng.lat.toFixed(6);
-                            document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
+                        // Инициализация Яндекс.Карт
+                        ymaps.ready(function() {
+                            window.pickerMap = new ymaps.Map('mapPicker', {
+                                center: [51.527623, 81.217673],
+                                zoom: 14,
+                                controls: ['zoomControl', 'fullscreenControl', 'typeSelector']
+                            });
+                            
+                            window.pickerMarker = null;
+                            
+                            // Добавляем маркер при клике
+                            window.pickerMap.events.add('click', function(e) {
+                                const coords = e.get('coords');
+                                
+                                if (window.pickerMarker) {
+                                    window.pickerMap.geoObjects.remove(window.pickerMarker);
+                                }
+                                
+                                window.pickerMarker = new ymaps.Placemark(coords, {
+                                    balloonContent: 'Выбранное место'
+                                }, {
+                                    preset: 'islands#greenDotIcon'
+                                });
+                                
+                                window.pickerMap.geoObjects.add(window.pickerMarker);
+                                
+                                document.getElementById('latitude').value = coords[0].toFixed(6);
+                                document.getElementById('longitude').value = coords[1].toFixed(6);
+                            });
                         });
+                    }
+                });
+                
+                // Очищаем поля при закрытии модального окна
+                modal.addEventListener('hidden.bs.modal', function() {
+                    document.getElementById('latitude').value = '';
+                    document.getElementById('longitude').value = '';
+                    document.getElementById('title').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('category').selectedIndex = 0;
+                    document.getElementById('attachments').value = '';
+                    
+                    // Удаляем маркер если есть
+                    if (window.pickerMarker && window.pickerMap) {
+                        window.pickerMap.geoObjects.remove(window.pickerMarker);
+                        window.pickerMarker = null;
                     }
                 });
             }
@@ -237,7 +281,8 @@
                     document.getElementById('longitude').value = '';
                     document.getElementById('attachments').value = '';
                     
-                    alert('Идея успешно добавлена!');
+                    // Показываем уведомление об успехе
+                    showAlert('Идея успешно добавлена!', 'success');
                     
                     // Обновляем карту если мы на странице карты
                     if (typeof loadIdeas === 'function') {
@@ -251,7 +296,69 @@
                 console.error('Error:', error);
             }
         }
+
+        // Вспомогательная функция для показа уведомлений
+        function showAlert(message, type = 'success') {
+            // Создаем элемент уведомления
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Автоматически скрываем через 3 секунды
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 3000);
+        }
+
+        // Функция для инициализации карты выбора (для других страниц)
+        function initMapPicker() {
+            if (document.getElementById('mapPicker')) {
+                ymaps.ready(function() {
+                    const map = new ymaps.Map('mapPicker', {
+                        center: [51.527623, 81.217673],
+                        zoom: 14,
+                        controls: ['zoomControl']
+                    });
+                    
+                    let marker;
+                    map.events.add('click', function(e) {
+                        const coords = e.get('coords');
+                        if (marker) {
+                            map.geoObjects.remove(marker);
+                        }
+                        marker = new ymaps.Placemark(coords);
+                        map.geoObjects.add(marker);
+                        
+                        if (document.getElementById('latitude')) {
+                            document.getElementById('latitude').value = coords[0].toFixed(6);
+                        }
+                        if (document.getElementById('longitude')) {
+                            document.getElementById('longitude').value = coords[1].toFixed(6);
+                        }
+                    });
+                });
+            }
+        }
+
+        // Вызываем initMapPicker при загрузке страницы
+        document.addEventListener('DOMContentLoaded', function() {
+            initMapPicker();
+            
+            // Если есть функция загрузки идей, вызываем её
+            if (typeof loadIdeas === 'function') {
+                loadIdeas();
+            }
+        });
     </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>
