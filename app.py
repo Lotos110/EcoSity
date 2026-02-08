@@ -260,25 +260,58 @@ def get_statistics():
 # ... ваш существующий код ...
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
+    # Создаем папку instance если её нет
+    instance_path = os.path.join(os.path.dirname(__file__), 'instance')
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
+        print(f"Создана папка instance: {instance_path}")
 
-        # Создаем администратора только если база данных пустая
+    # Создаем папку для загрузок если её нет
+    uploads_path = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+    if not os.path.exists(uploads_path):
+        os.makedirs(uploads_path)
+        print(f"Создана папка uploads: {uploads_path}")
+
+    # Инициализация базы данных
+    with app.app_context():
+        # Создаем все таблицы если их нет
+        db.create_all()
+        print("База данных инициализирована")
+
+        # Создаем администратора если его нет
         if not User.query.filter_by(username='admin').first():
             admin = User(
                 username='admin',
                 email='admin@ecocity-rubtsovsk.ru',
-                password_hash=generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123')),
+                password_hash=generate_password_hash('admin123'),
                 is_admin=True
             )
             db.session.add(admin)
-            db.session.commit()
-            print('Администратор создан')
 
-    # На Render используем порт из переменной окружения
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+            # Добавим тестовую идею если база пуста
+            test_idea = Idea(
+                title='Тестовая идея для Рубцовска',
+                description='Это тестовая идея для проверки работы системы',
+                category='озеленение',
+                latitude=51.527623,
+                longitude=81.217673,
+                user_id=1,
+                votes_count=5,
+                status='approved'
+            )
+            db.session.add(test_idea)
+
+            db.session.commit()
+            print('Администратор создан: логин - admin, пароль - admin123')
+            print('Добавлена тестовая идея')
+        else:
+            # Проверяем есть ли идеи
+            total_ideas = Idea.query.count()
+            total_users = User.query.count()
+            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
 
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
+    print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
     print(f"Откройте в браузере: http://localhost:5000")
+    app.run(debug=True, port=5000)
