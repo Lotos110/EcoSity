@@ -6,7 +6,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from config import Config
 
-app = Flask(__name__)
+# !!! ИСПРАВЛЕНИЕ: указываем имя папки со статикой как 'staticCSS'
+app = Flask(__name__, static_folder='staticCSS')
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
@@ -15,66 +16,59 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # Уникальный ID
-    username = db.Column(db.String(80), unique=True, nullable=False)  # Логин
-    email = db.Column(db.String(120), unique=True, nullable=False)  # Email
-    password_hash = db.Column(db.String(200), nullable=False)  #пароль
-    city = db.Column(db.String(50), default='Рубцовск')  # Город пользователя
-    is_admin = db.Column(db.Boolean, default=False)  # Права администратора
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Дата регистрации
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    city = db.Column(db.String(50), default='Рубцовск')
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Idea(db.Model):
-    id = db.Column(db.Integer, primary_key=True)  # Уникальный ID идеи
-    title = db.Column(db.String(200), nullable=False)  # Заголовок идеи
-    description = db.Column(db.Text, nullable=False)  # Описание идеи
-    category = db.Column(db.String(50), nullable=False)  # Категория
-    latitude = db.Column(db.Float, nullable=False)  # Широта на карте
-    longitude = db.Column(db.Float, nullable=False)  # Долгота на карте
-    status = db.Column(db.String(20), default='pending')  # Статус
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Дата создания
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # ID автора
-    votes_count = db.Column(db.Integer, default=0)  # Количество голосов
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False)
+    latitude = db.Column(db.Float, nullable=False)
+    longitude = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), default='pending')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    votes_count = db.Column(db.Integer, default=0)
     author = db.relationship('User', backref='ideas', lazy=True)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
-# Главная страница
 @app.route('/')
 def index():
     recent_ideas = Idea.query.order_by(Idea.created_at.desc()).limit(3).all()
     total_ideas = Idea.query.count()
     total_users = User.query.count()
-
     return render_template('index.html',
                            recent_ideas=recent_ideas,
                            total_ideas=total_ideas,
                            total_users=total_users)
 
-# Страница с интерактивной картой
 @app.route('/map')
 def map_view():
     categories = ['спорт', 'культура', 'экология', 'озеленение', 'безопасность', 'другое']
     return render_template('map.html',
                            categories=categories,
-                           map_center=app.config['MAP_CENTER'],  # Центр карты (Рубцовск)
-                           map_zoom=app.config['MAP_ZOOM'])  # Уровень приближения
+                           map_center=app.config['MAP_CENTER'],
+                           map_zoom=app.config['MAP_ZOOM'])
 
 @app.route('/api/ideas', methods=['GET'])
 def get_ideas():
     category = request.args.get('category')
     status = request.args.get('status')
     query = Idea.query
-
     if category:
         query = query.filter_by(category=category)
     if status:
         query = query.filter_by(status=status)
-
     ideas = query.all()
-
     result = []
     for idea in ideas:
         result.append({
@@ -89,7 +83,6 @@ def get_ideas():
             'author': idea.author.username,
             'created_at': idea.created_at.isoformat()
         })
-
     return jsonify(result)
 
 @app.route('/api/ideas', methods=['POST'])
@@ -98,16 +91,15 @@ def create_idea():
     try:
         data = request.json
         idea = Idea(
-            title=data['title'],  # Заголовок
-            description=data['description'],  # Описание
-            category=data['category'],  # Категория
-            latitude=data['latitude'],  # Широта
-            longitude=data['longitude'],  # Долгота
-            user_id=current_user.id  # ID текущего пользователя
+            title=data['title'],
+            description=data['description'],
+            category=data['category'],
+            latitude=data['latitude'],
+            longitude=data['longitude'],
+            user_id=current_user.id
         )
         db.session.add(idea)
         db.session.commit()
-
         return jsonify({'success': True, 'id': idea.id})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -136,36 +128,29 @@ def register():
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         city = request.form.get('city', 'Рубцовск')
-
         if not username or not email or not password:
             flash('Заполните все обязательные поля')
             return redirect(url_for('register'))
-
         if password != confirm_password:
             flash('Пароли не совпадают')
             return redirect(url_for('register'))
-
         if len(password) < 6:
             flash('Пароль должен содержать минимум 6 символов')
             return redirect(url_for('register'))
-
         if User.query.filter_by(email=email).first():
             flash('Email уже зарегистрирован')
             return redirect(url_for('register'))
-
         user = User(
             username=username,
             email=email,
-            password_hash=generate_password_hash(password),  # Хэшируем пароль
+            password_hash=generate_password_hash(password),
             city=city
         )
-
         db.session.add(user)
         db.session.commit()
         login_user(user)
         flash(f'Добро пожаловать, {username}!', 'success')
         return redirect(url_for('index'))
-
     return render_template('auth/register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -175,19 +160,14 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-
         user = User.query.filter_by(username=username).first()
-
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль')
-
     return render_template('auth/login.html')
-
 
 @app.route('/logout')
 @login_required
@@ -195,32 +175,26 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-
 @app.route('/admin')
 @login_required
 def admin_dashboard():
     if not current_user.is_admin:
         return redirect(url_for('index'))
-
     total_ideas = Idea.query.count()
     total_users = User.query.count()
-
     categories = db.session.query(
         Idea.category,
         db.func.count(Idea.id)
     ).group_by(Idea.category).all()
-
     statuses = db.session.query(
         Idea.status,
         db.func.count(Idea.id)
     ).group_by(Idea.status).all()
-
     return render_template('admin/dashboard.html',
                            total_ideas=total_ideas,
                            total_users=total_users,
                            categories=categories,
                            statuses=statuses)
-
 
 @app.route('/api/ideas/<int:idea_id>/vote', methods=['POST'])
 @login_required
@@ -229,18 +203,14 @@ def vote_idea(idea_id):
         data = request.json
         vote_type = data.get('vote_type')
         idea = Idea.query.get_or_404(idea_id)
-
         if vote_type == 'up':
             idea.votes_count += 1
         elif vote_type == 'down' and idea.votes_count > 0:
             idea.votes_count -= 1
-
         db.session.commit()
-
         return jsonify({'success': True, 'votes_count': idea.votes_count})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
-
 
 @app.route('/city')
 def city_info():
@@ -250,35 +220,25 @@ def city_info():
 def get_statistics():
     total_ideas = Idea.query.count()
     total_users = User.query.count()
-
     return jsonify({
         'total_ideas': total_ideas,
         'total_users': total_users
     })
 
-
-# ... ваш существующий код ...
-
 if __name__ == '__main__':
-    # Создаем папку instance если её нет
     instance_path = os.path.join(os.path.dirname(__file__), 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
         print(f"Создана папка instance: {instance_path}")
 
-    # Создаем папку для загрузок если её нет
     uploads_path = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
     if not os.path.exists(uploads_path):
         os.makedirs(uploads_path)
         print(f"Создана папка uploads: {uploads_path}")
 
-    # Инициализация базы данных
     with app.app_context():
-        # Создаем все таблицы если их нет
         db.create_all()
         print("База данных инициализирована")
-
-        # Создаем администратора если его нет
         if not User.query.filter_by(username='admin').first():
             admin = User(
                 username='admin',
@@ -287,8 +247,6 @@ if __name__ == '__main__':
                 is_admin=True
             )
             db.session.add(admin)
-
-            # Добавим тестовую идею если база пуста
             test_idea = Idea(
                 title='Тестовая идея для Рубцовска',
                 description='Это тестовая идея для проверки работы системы',
@@ -300,12 +258,10 @@ if __name__ == '__main__':
                 status='approved'
             )
             db.session.add(test_idea)
-
             db.session.commit()
             print('Администратор создан: логин - admin, пароль - admin123')
             print('Добавлена тестовая идея')
         else:
-            # Проверяем есть ли идеи
             total_ideas = Idea.query.count()
             total_users = User.query.count()
             print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
