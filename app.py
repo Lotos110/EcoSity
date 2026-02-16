@@ -6,7 +6,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from config import Config
 
-# !!! ИСПРАВЛЕНИЕ: указываем имя папки со статикой как 'staticCSS'
 app = Flask(__name__, static_folder='staticCSS')
 app.config.from_object(Config)
 
