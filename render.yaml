@@ -1,10 +1,10 @@
 services:
   - type: web
     name: eco-city-rubtsovsk
-    env: python
+    runtime: python                     # обязательно runtime вместо env
+    pythonVersion: 3.10.0                # фиксируем нужную версию
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
-    pythonVersion: 3.10.0                 # явно указываем версию Python
     envVars:
       - key: SECRET_KEY
         generateValue: true
@@ -16,5 +16,5 @@ databases:
     databaseName: eco_city
     user: eco_city_user
     plan: free
-    region: oregon                          # укажите тот же регион, что и веб-сервис
-    ipAllowList: []                          # разрешить подключения только из внутренней сети
+    region: oregon                        # укажите тот же регион, что у веб-сервиса
+    ipAllowList: []                        # доступ только из внутренней сети
