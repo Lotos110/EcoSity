@@ -9,6 +9,7 @@ from config import Config
 app = Flask(__name__, static_folder='staticCSS')
 app.config.from_object(Config)
 
+
 db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
