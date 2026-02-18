@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from config import Config
 
-app = Flask(__name__, static_folder='static')  # static_folder исправлено на 'static'
+app = Flask(__name__, static_folder='staticCSS')
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
@@ -14,7 +14,6 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Модели
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -41,63 +40,6 @@ class Idea(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Инициализация базы данных и создание тестовых данных
-def init_database():
-    with app.app_context():
-        db.create_all()
-        # Создаём администратора, если его нет
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                email='admin@ecocity-rubtsovsk.ru',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
-            )
-            db.session.add(admin)
-            db.session.commit()
-            print('Администратор создан: admin / admin123')
-        # Добавляем тестовые идеи, если таблица пуста
-        if Idea.query.count() == 0:
-            test_ideas = [
-                Idea(
-                    title='Создание нового парка на Ленина',
-                    description='Зелёная зона с детской площадкой и скамейками',
-                    category='озеленение',
-                    latitude=51.527623,
-                    longitude=81.217673,
-                    user_id=1,
-                    votes_count=15,
-                    status='approved'
-                ),
-                Idea(
-                    title='Ремонт тротуара на Советской',
-                    description='Тротуар требует срочного ремонта',
-                    category='безопасность',
-                    latitude=51.525000,
-                    longitude=81.220000,
-                    user_id=1,
-                    votes_count=8,
-                    status='pending'
-                ),
-                Idea(
-                    title='Установка велопарковок в центре',
-                    description='Парковки у магазинов и учреждений',
-                    category='транспорт',
-                    latitude=51.530000,
-                    longitude=81.215000,
-                    user_id=1,
-                    votes_count=12,
-                    status='approved'
-                )
-            ]
-            db.session.add_all(test_ideas)
-            db.session.commit()
-            print('Тестовые идеи добавлены.')
-
-# Вызываем инициализацию при старте (для gunicorn и локального запуска)
-init_database()
-
-# Маршруты
 @app.route('/')
 def index():
     recent_ideas = Idea.query.order_by(Idea.created_at.desc()).limit(3).all()
@@ -114,8 +56,7 @@ def map_view():
     return render_template('map.html',
                            categories=categories,
                            map_center=app.config['MAP_CENTER'],
-                           map_zoom=app.config['MAP_ZOOM'],
-                           map_tiles=app.config['MAP_TILES'])  # передаём tiles в шаблон
+                           map_zoom=app.config['MAP_ZOOM'])
 
 @app.route('/api/ideas', methods=['GET'])
 def get_ideas():
@@ -209,7 +150,7 @@ def register():
         login_user(user)
         flash(f'Добро пожаловать, {username}!', 'success')
         return redirect(url_for('index'))
-    return render_template('auth/register.html')  # путь к шаблону
+    return render_template('auth/register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -225,7 +166,7 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль')
-    return render_template('auth/login.html')  # путь к шаблону
+    return render_template('auth/login.html')
 
 @app.route('/logout')
 @login_required
@@ -240,8 +181,6 @@ def admin_dashboard():
         return redirect(url_for('index'))
     total_ideas = Idea.query.count()
     total_users = User.query.count()
-    # Для демонстрации добавим фиктивное количество голосов (можно подсчитать позже)
-    total_votes = db.session.query(db.func.sum(Idea.votes_count)).scalar() or 0
     categories = db.session.query(
         Idea.category,
         db.func.count(Idea.id)
@@ -253,7 +192,6 @@ def admin_dashboard():
     return render_template('admin/dashboard.html',
                            total_ideas=total_ideas,
                            total_users=total_users,
-                           total_votes=total_votes,
                            categories=categories,
                            statuses=statuses)
 
@@ -286,47 +224,50 @@ def get_statistics():
         'total_users': total_users
     })
 
-# Дополнительные маршруты для админки (упрощённо)
-@app.route('/admin/ideas')
-@login_required
-def admin_ideas():
-    if not current_user.is_admin:
-        return redirect(url_for('index'))
-    return render_template('admin/ideas.html')
+def init_database(app):
+    """Инициализация базы данных и создание необходимых папок."""
+    instance_path = os.path.join(os.path.dirname(__file__), 'instance')
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
+        print(f"Создана папка instance: {instance_path}")
 
-@app.route('/admin/statistics')
-@login_required
-def admin_statistics():
-    if not current_user.is_admin:
-        return redirect(url_for('index'))
-    return render_template('admin/statistics.html')
+    uploads_path = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
+    if not os.path.exists(uploads_path):
+        os.makedirs(uploads_path)
+        print(f"Создана папка uploads: {uploads_path}")
 
-@app.route('/api/admin/all-ideas')
-@login_required
-def admin_all_ideas():
-    if not current_user.is_admin:
-        return jsonify({'error': 'Access denied'}), 403
-    # Здесь должна быть логика фильтрации и пагинации, но для краткости вернём все идеи
-    ideas = Idea.query.all()
-    return jsonify({
-        'ideas': [{
-            'id': i.id,
-            'title': i.title,
-            'category': i.category,
-            'author': i.author.username,
-            'status': i.status,
-            'votes_count': i.votes_count,
-            'views_count': 0,  # заглушка
-            'created_at': i.created_at.isoformat()
-        } for i in ideas],
-        'total': len(ideas),
-        'pages': 1
-    })
+    with app.app_context():
+        db.create_all()
+        print("База данных инициализирована")
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                email='admin@ecocity-rubtsovsk.ru',
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True
+            )
+            db.session.add(admin)
+            test_idea = Idea(
+                title='Тестовая идея для Рубцовска',
+                description='Это тестовая идея для проверки работы системы',
+                category='озеленение',
+                latitude=51.527623,
+                longitude=81.217673,
+                user_id=1,
+                votes_count=5,
+                status='approved'
+            )
+            db.session.add(test_idea)
+            db.session.commit()
+            print('Администратор создан: логин - admin, пароль - admin123')
+            print('Добавлена тестовая идея')
+        else:
+            total_ideas = Idea.query.count()
+            total_users = User.query.count()
+            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
 
 if __name__ == '__main__':
-    # При локальном запуске также вызываем init_database (хотя она уже вызвана выше)
-    # но оставим для гарантии
-    #init_database()
+#    init_database(app)
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
     print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
