@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Карта общественных инициатив г. Рубцовск - {{ super() }}{% endblock %}
+{% block title %}Карта общественных инициатив г. Рубцовск{{ super() }}{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -187,9 +187,15 @@
         map = L.map('map').setView({{ map_center }}, {{ map_zoom }});
 
         // Добавляем слой OpenStreetMap
-        L.tileLayer('{{ map_tiles }}', {
+        L.tileLayer('{{ config.MAP_TILES }}', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
+
+        // Добавляем маркер центра города
+        L.marker({{ map_center }})
+            .addTo(map)
+            .bindPopup('<b>Центр Рубцовска</b>')
+            .openPopup();
 
         // Загружаем идеи
         loadIdeas();
@@ -239,6 +245,7 @@
         const category = document.getElementById('categoryFilter').value;
         const status = document.getElementById('statusFilter').value;
 
+        // Показываем индикатор загрузки
         document.getElementById('ideasList').innerHTML = `
             <div class="spinner-border text-success" role="status">
                 <span class="visually-hidden">Загрузка...</span>
@@ -247,9 +254,11 @@
         `;
 
         try {
+            // Очищаем существующие маркеры
             Object.values(markers).forEach(marker => marker.remove());
             markers = {};
 
+            // Загружаем идеи из API
             const response = await fetch(`/api/ideas?category=${category}&status=${status}`);
             currentIdeas = await response.json();
 
@@ -258,7 +267,7 @@
 
             currentIdeas.forEach(idea => {
                 hasIdeas = true;
-
+                // Добавляем маркер на карту
                 const marker = L.circleMarker([idea.latitude, idea.longitude], {
                     radius: 10,
                     fillColor: getStatusColor(idea.status),
@@ -284,6 +293,7 @@
 
                 markers[idea.id] = marker;
 
+                // Добавляем в список
                 ideasHtml += `
                     <div class="col-md-6 mb-3">
                         <div class="card h-100 idea-card" onclick="showIdeaDetails(${idea.id})">
@@ -332,10 +342,12 @@
                 </div>
             `;
 
+            // Обновляем статистику
             document.getElementById('ideasCount').textContent = currentIdeas.length;
             document.getElementById('filteredCount').textContent = currentIdeas.length;
             document.getElementById('listCount').textContent = currentIdeas.length;
 
+            // Подгоняем карту ко всем маркерам
             if (currentIdeas.length > 0) {
                 const markerBounds = L.latLngBounds(
                     currentIdeas.map(idea => [idea.latitude, idea.longitude])
@@ -416,8 +428,9 @@
                 </div>
             `;
 
+            // Инициализируем мини-карту для детального просмотра
             const detailMap = L.map('detailMap').setView([idea.latitude, idea.longitude], 15);
-            L.tileLayer('{{ map_tiles }}', {
+            L.tileLayer('{{ config.MAP_TILES }}', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(detailMap);
             
@@ -426,6 +439,7 @@
                 .bindPopup(`<strong>${idea.title}</strong>`)
                 .openPopup();
 
+            // Показываем модальное окно
             const modal = new bootstrap.Modal(document.getElementById('ideaModal'));
             modal.show();
 
@@ -451,6 +465,7 @@
             const data = await response.json();
             
             if (data.success) {
+                // Показываем уведомление
                 const toast = document.createElement('div');
                 toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed bottom-0 end-0 m-3';
                 toast.innerHTML = `
@@ -464,8 +479,10 @@
                 document.body.appendChild(toast);
                 bootstrap.Toast.getOrCreateInstance(toast).show();
                 
+                // Удаляем уведомление через 3 секунды
                 setTimeout(() => toast.remove(), 3000);
                 
+                // Обновляем данные
                 loadIdeas();
             } else {
                 alert('Ошибка при голосовании: ' + data.error);
@@ -476,6 +493,7 @@
         }
     }
 
+    // Инициализируем карту после загрузки DOM
     document.addEventListener('DOMContentLoaded', initMap);
 </script>
 {% endblock %}
