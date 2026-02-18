@@ -224,7 +224,8 @@ def get_statistics():
         'total_users': total_users
     })
 
-if __name__ == '__main__':
+def init_database(app):
+    """Инициализация базы данных и создание необходимых папок."""
     instance_path = os.path.join(os.path.dirname(__file__), 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
@@ -265,6 +266,8 @@ if __name__ == '__main__':
             total_users = User.query.count()
             print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
 
+if __name__ == '__main__':
+    init_database(app)
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
     print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
