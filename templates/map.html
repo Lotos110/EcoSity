@@ -1,14 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}Карта общественных инициатив г. Рубцовск{{ super() }}{% endblock %}
+{% block title %}Карта общественных инициатив г. Рубтовск{{ super() }}{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     #map {
         height: 600px;
         border-radius: 8px;
         border: 1px solid #ddd;
+    }
+    .ymaps-2-1-79-map-copyrights-promo {
+        display: none !important;
     }
     .legend {
         padding: 10px;
@@ -16,12 +18,12 @@
         border-radius: 5px;
         box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    .legend i {
+    .legend-color {
         width: 18px;
         height: 18px;
         float: left;
         margin-right: 8px;
-        opacity: 0.7;
+        border-radius: 50%;
     }
     .legend-item {
         margin-bottom: 5px;
@@ -85,19 +87,19 @@
             <div class="card-body">
                 <div class="legend">
                     <div class="legend-item">
-                        <i style="background: #28a745; border-radius: 50%;"></i> 
+                        <div class="legend-color" style="background: #28a745;"></div>
                         <span>Реализовано</span>
                     </div>
                     <div class="legend-item">
-                        <i style="background: #007bff; border-radius: 50%;"></i> 
+                        <div class="legend-color" style="background: #007bff;"></div>
                         <span>Одобрено</span>
                     </div>
                     <div class="legend-item">
-                        <i style="background: #ffc107; border-radius: 50%;"></i> 
+                        <div class="legend-color" style="background: #ffc107;"></div>
                         <span>На рассмотрении</span>
                     </div>
                     <div class="legend-item">
-                        <i style="background: #dc3545; border-radius: 50%;"></i> 
+                        <div class="legend-color" style="background: #dc3545;"></div>
                         <span>Отклонено</span>
                     </div>
                 </div>
@@ -183,32 +185,27 @@
     let currentIdeas = [];
 
     function initMap() {
-        // Инициализируем карту с центром в Рубцовске
-        map = L.map('map').setView({{ map_center }}, {{ map_zoom }});
+        ymaps.ready(function() {
+            // Инициализируем карту с центром в Рубцовске
+            map = new ymaps.Map('map', {
+                center: {{ map_center }},
+                zoom: {{ map_zoom }},
+                controls: ['zoomControl', 'fullscreenControl', 'typeSelector', 'rulerControl']
+            });
 
-        // Добавляем слой OpenStreetMap
-        L.tileLayer('{{ config.MAP_TILES }}', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Добавляем маркер центра города
-        L.marker({{ map_center }})
-            .addTo(map)
-            .bindPopup('<b>Центр Рубцовска</b>')
-            .openPopup();
-
-        // Загружаем идеи
-        loadIdeas();
+            // Загружаем идеи
+            loadIdeas();
+        });
     }
 
-    function getStatusColor(status) {
-        const colors = {
-            'implemented': '#28a745',
-            'approved': '#007bff',
-            'pending': '#ffc107',
-            'rejected': '#dc3545'
+    function getStatusPreset(status) {
+        const presets = {
+            'implemented': 'islands#greenDotIcon',
+            'approved': 'islands#blueDotIcon',
+            'pending': 'islands#yellowDotIcon',
+            'rejected': 'islands#redDotIcon'
         };
-        return colors[status] || '#6c757d';
+        return presets[status] || 'islands#grayDotIcon';
     }
 
     function getStatusText(status) {
@@ -241,6 +238,32 @@
         loadIdeas();
     }
 
+    function addMarker(idea) {
+        if (!map || markers[idea.id]) return;
+
+        const marker = new ymaps.Placemark([idea.latitude, idea.longitude], {
+            balloonContent: `
+                <div style="min-width: 250px;">
+                    <h6><strong>${idea.title}</strong></h6>
+                    <p><small>${idea.description.substring(0, 100)}...</small></p>
+                    <p><strong>Категория:</strong> ${idea.category}</p>
+                    <p><strong>Статус:</strong> <span class="badge">${getStatusText(idea.status)}</span></p>
+                    <div class="text-center mt-2">
+                        <button class="btn btn-sm btn-success" onclick="showIdeaDetails(${idea.id}); event.stopPropagation();">
+                            <i class="bi bi-info-circle"></i> Подробнее
+                        </button>
+                    </div>
+                </div>
+            `
+        }, {
+            preset: getStatusPreset(idea.status),
+            balloonCloseButton: true
+        });
+
+        markers[idea.id] = marker;
+        map.geoObjects.add(marker);
+    }
+
     async function loadIdeas() {
         const category = document.getElementById('categoryFilter').value;
         const status = document.getElementById('statusFilter').value;
@@ -255,7 +278,9 @@
 
         try {
             // Очищаем существующие маркеры
-            Object.values(markers).forEach(marker => marker.remove());
+            Object.values(markers).forEach(marker => {
+                map.geoObjects.remove(marker);
+            });
             markers = {};
 
             // Загружаем идеи из API
@@ -267,31 +292,9 @@
 
             currentIdeas.forEach(idea => {
                 hasIdeas = true;
+                
                 // Добавляем маркер на карту
-                const marker = L.circleMarker([idea.latitude, idea.longitude], {
-                    radius: 10,
-                    fillColor: getStatusColor(idea.status),
-                    color: '#ffffff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                }).addTo(map);
-
-                marker.bindPopup(`
-                    <div style="min-width: 250px;">
-                        <h6><strong>${idea.title}</strong></h6>
-                        <p><small>${idea.description.substring(0, 100)}...</small></p>
-                        <p><strong>Категория:</strong> ${idea.category}</p>
-                        <p><strong>Статус:</strong> <span class="badge" style="background: ${getStatusColor(idea.status)}">${getStatusText(idea.status)}</span></p>
-                        <div class="text-center mt-2">
-                            <button class="btn btn-sm btn-success" onclick="showIdeaDetails(${idea.id})">
-                                <i class="bi bi-info-circle"></i> Подробнее
-                            </button>
-                        </div>
-                    </div>
-                `);
-
-                markers[idea.id] = marker;
+                addMarker(idea);
 
                 // Добавляем в список
                 ideasHtml += `
@@ -304,7 +307,9 @@
                                     <span class="badge bg-secondary">
                                         <i class="bi ${getCategoryIcon(idea.category)}"></i> ${idea.category}
                                     </span>
-                                    <span class="badge" style="background: ${getStatusColor(idea.status)}">
+                                    <span class="badge bg-${idea.status === 'implemented' ? 'success' : 
+                                                              idea.status === 'approved' ? 'primary' : 
+                                                              idea.status === 'pending' ? 'warning' : 'danger'}">
                                         ${getStatusText(idea.status)}
                                     </span>
                                 </div>
@@ -348,11 +353,11 @@
             document.getElementById('listCount').textContent = currentIdeas.length;
 
             // Подгоняем карту ко всем маркерам
-            if (currentIdeas.length > 0) {
-                const markerBounds = L.latLngBounds(
+            if (currentIdeas.length > 0 && map) {
+                const bounds = new ymaps.util.calculateBounds(
                     currentIdeas.map(idea => [idea.latitude, idea.longitude])
                 );
-                map.fitBounds(markerBounds.pad(0.1));
+                map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 50 });
             }
 
         } catch (error) {
@@ -384,7 +389,9 @@
                             </div>
                             <div class="col-md-6">
                                 <p><strong>Статус:</strong><br>
-                                <span class="badge" style="background: ${getStatusColor(idea.status)}">
+                                <span class="badge bg-${idea.status === 'implemented' ? 'success' : 
+                                                          idea.status === 'approved' ? 'primary' : 
+                                                          idea.status === 'pending' ? 'warning' : 'danger'}">
                                     ${getStatusText(idea.status)}
                                 </span></p>
                             </div>
@@ -429,15 +436,19 @@
             `;
 
             // Инициализируем мини-карту для детального просмотра
-            const detailMap = L.map('detailMap').setView([idea.latitude, idea.longitude], 15);
-            L.tileLayer('{{ config.MAP_TILES }}', {
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(detailMap);
-            
-            L.marker([idea.latitude, idea.longitude])
-                .addTo(detailMap)
-                .bindPopup(`<strong>${idea.title}</strong>`)
-                .openPopup();
+            ymaps.ready(function() {
+                const detailMap = new ymaps.Map('detailMap', {
+                    center: [idea.latitude, idea.longitude],
+                    zoom: 15,
+                    controls: ['zoomControl']
+                });
+                
+                new ymaps.Placemark([idea.latitude, idea.longitude], {
+                    balloonContent: `<strong>${idea.title}</strong>`
+                }, {
+                    preset: 'islands#blueIcon'
+                }).addTo(detailMap);
+            });
 
             // Показываем модальное окно
             const modal = new bootstrap.Modal(document.getElementById('ideaModal'));
