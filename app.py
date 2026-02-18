@@ -268,7 +268,7 @@ def init_database(app):
             print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
 
 if __name__ == '__main__':
-    init_database(app)
+#    init_database(app)
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
     print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
