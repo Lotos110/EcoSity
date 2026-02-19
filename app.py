@@ -1,4 +1,5 @@
 import os
+import logging
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -6,8 +7,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from config import Config
 
-# !!! ИСПРАВЛЕНИЕ: указываем имя папки со статикой как 'staticCSS'
-app = Flask(__name__, static_folder='staticCSS')
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 
 db = SQLAlchemy(app)
@@ -15,6 +19,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Модели
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -41,6 +46,66 @@ class Idea(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Создание таблиц при первом запросе (если их нет)
+@app.before_request
+def create_tables():
+    # Проверяем, созданы ли таблицы, по наличию таблицы 'user'
+    if not hasattr(app, 'tables_created'):
+        try:
+            db.create_all()
+            # Добавляем администратора по умолчанию, если его нет
+            if not User.query.filter_by(username='admin').first():
+                admin = User(
+                    username='admin',
+                    email='admin@ecocity-rubtsovsk.ru',
+                    password_hash=generate_password_hash('admin123'),
+                    is_admin=True
+                )
+                db.session.add(admin)
+                db.session.commit()
+                logger.info("Администратор создан: admin / admin123")
+            # Добавляем тестовые идеи, если таблица пуста
+            if Idea.query.count() == 0:
+                test_ideas = [
+                    Idea(
+                        title='Создание нового парка на Ленина',
+                        description='Зелёная зона с детской площадкой и скамейками',
+                        category='озеленение',
+                        latitude=51.527623,
+                        longitude=81.217673,
+                        user_id=1,
+                        votes_count=15,
+                        status='approved'
+                    ),
+                    Idea(
+                        title='Ремонт тротуара на Советской',
+                        description='Тротуар требует срочного ремонта',
+                        category='безопасность',
+                        latitude=51.525000,
+                        longitude=81.220000,
+                        user_id=1,
+                        votes_count=8,
+                        status='pending'
+                    ),
+                    Idea(
+                        title='Установка велопарковок в центре',
+                        description='Парковки у магазинов и учреждений',
+                        category='транспорт',
+                        latitude=51.530000,
+                        longitude=81.215000,
+                        user_id=1,
+                        votes_count=12,
+                        status='approved'
+                    )
+                ]
+                db.session.add_all(test_ideas)
+                db.session.commit()
+                logger.info("Тестовые идеи добавлены.")
+            app.tables_created = True
+        except Exception as e:
+            logger.error(f"Ошибка при создании таблиц: {e}")
+
+# Маршруты
 @app.route('/')
 def index():
     recent_ideas = Idea.query.order_by(Idea.created_at.desc()).limit(3).all()
@@ -57,7 +122,8 @@ def map_view():
     return render_template('map.html',
                            categories=categories,
                            map_center=app.config['MAP_CENTER'],
-                           map_zoom=app.config['MAP_ZOOM'])
+                           map_zoom=app.config['MAP_ZOOM'],
+                           map_tiles=app.config['MAP_TILES'])
 
 @app.route('/api/ideas', methods=['GET'])
 def get_ideas():
@@ -102,6 +168,7 @@ def create_idea():
         db.session.commit()
         return jsonify({'success': True, 'id': idea.id})
     except Exception as e:
+        logger.error(f"Ошибка создания идеи: {e}")
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/ideas/<int:idea_id>', methods=['GET'])
@@ -128,30 +195,41 @@ def register():
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
         city = request.form.get('city', 'Рубцовск')
+
+        # Валидация
         if not username or not email or not password:
-            flash('Заполните все обязательные поля')
+            flash('Заполните все обязательные поля', 'danger')
             return redirect(url_for('register'))
         if password != confirm_password:
-            flash('Пароли не совпадают')
+            flash('Пароли не совпадают', 'danger')
             return redirect(url_for('register'))
         if len(password) < 6:
-            flash('Пароль должен содержать минимум 6 символов')
+            flash('Пароль должен содержать минимум 6 символов', 'danger')
             return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first():
-            flash('Email уже зарегистрирован')
+
+        try:
+            if User.query.filter_by(email=email).first():
+                flash('Email уже зарегистрирован', 'danger')
+                return redirect(url_for('register'))
+
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                city=city
+            )
+            db.session.add(user)
+            db.session.commit()
+            login_user(user)
+            flash(f'Добро пожаловать, {username}!', 'success')
+            return redirect(url_for('index'))
+        except Exception as e:
+            logger.error(f"Ошибка регистрации пользователя {username}: {e}")
+            db.session.rollback()
+            flash('Произошла ошибка при регистрации. Пожалуйста, попробуйте позже.', 'danger')
             return redirect(url_for('register'))
-        user = User(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password),
-            city=city
-        )
-        db.session.add(user)
-        db.session.commit()
-        login_user(user)
-        flash(f'Добро пожаловать, {username}!', 'success')
-        return redirect(url_for('index'))
-    return render_template('auth/register.html')
+
+    return render_template('register.html')  # путь без 'auth/'
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -166,8 +244,8 @@ def login():
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
-            flash('Неверное имя пользователя или пароль')
-    return render_template('auth/login.html')
+            flash('Неверное имя пользователя или пароль', 'danger')
+    return render_template('login.html')  # путь без 'auth/'
 
 @app.route('/logout')
 @login_required
@@ -182,6 +260,7 @@ def admin_dashboard():
         return redirect(url_for('index'))
     total_ideas = Idea.query.count()
     total_users = User.query.count()
+    total_votes = db.session.query(db.func.sum(Idea.votes_count)).scalar() or 0
     categories = db.session.query(
         Idea.category,
         db.func.count(Idea.id)
@@ -193,6 +272,7 @@ def admin_dashboard():
     return render_template('admin/dashboard.html',
                            total_ideas=total_ideas,
                            total_users=total_users,
+                           total_votes=total_votes,
                            categories=categories,
                            statuses=statuses)
 
@@ -210,6 +290,7 @@ def vote_idea(idea_id):
         db.session.commit()
         return jsonify({'success': True, 'votes_count': idea.votes_count})
     except Exception as e:
+        logger.error(f"Ошибка голосования за идею {idea_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/city')
@@ -225,49 +306,43 @@ def get_statistics():
         'total_users': total_users
     })
 
+@app.route('/admin/ideas')
+@login_required
+def admin_ideas():
+    if not current_user.is_admin:
+        return redirect(url_for('index'))
+    return render_template('admin/ideas.html')
+
+@app.route('/admin/statistics')
+@login_required
+def admin_statistics():
+    if not current_user.is_admin:
+        return redirect(url_for('index'))
+    return render_template('admin/statistics.html')
+
+@app.route('/api/admin/all-ideas')
+@login_required
+def admin_all_ideas():
+    if not current_user.is_admin:
+        return jsonify({'error': 'Access denied'}), 403
+    ideas = Idea.query.all()
+    return jsonify({
+        'ideas': [{
+            'id': i.id,
+            'title': i.title,
+            'category': i.category,
+            'author': i.author.username,
+            'status': i.status,
+            'votes_count': i.votes_count,
+            'views_count': 0,
+            'created_at': i.created_at.isoformat()
+        } for i in ideas],
+        'total': len(ideas),
+        'pages': 1
+    })
+
 if __name__ == '__main__':
-    instance_path = os.path.join(os.path.dirname(__file__), 'instance')
-    if not os.path.exists(instance_path):
-        os.makedirs(instance_path)
-        print(f"Создана папка instance: {instance_path}")
-
-    uploads_path = os.path.join(os.path.dirname(__file__), 'static', 'uploads')
-    if not os.path.exists(uploads_path):
-        os.makedirs(uploads_path)
-        print(f"Создана папка uploads: {uploads_path}")
-
+    # Локальный запуск: создаём таблицы (если не созданы) и стартуем сервер
     with app.app_context():
         db.create_all()
-        print("База данных инициализирована")
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                email='admin@ecocity-rubtsovsk.ru',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
-            )
-            db.session.add(admin)
-            test_idea = Idea(
-                title='Тестовая идея для Рубцовска',
-                description='Это тестовая идея для проверки работы системы',
-                category='озеленение',
-                latitude=51.527623,
-                longitude=81.217673,
-                user_id=1,
-                votes_count=5,
-                status='approved'
-            )
-            db.session.add(test_idea)
-            db.session.commit()
-            print('Администратор создан: логин - admin, пароль - admin123')
-            print('Добавлена тестовая идея')
-        else:
-            total_ideas = Idea.query.count()
-            total_users = User.query.count()
-            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
-
-    print(f"Сервер Эко-Город для Рубцовска запускается...")
-    print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
-    print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
-    print(f"Откройте в браузере: http://localhost:5000")
     app.run(debug=True, port=5000)
