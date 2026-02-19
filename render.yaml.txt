@@ -2,7 +2,9 @@ services:
   - type: web
     name: eco-city-rubtsovsk
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python init_db.py          # ← эта команда выполнит инициализацию БД при деплое
     startCommand: gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
@@ -19,5 +21,5 @@ databases:
     databaseName: eco_city
     user: eco_city_user
     plan: free
-    region: ohio  # или frankfurt, oregon, singapore и т.д. – выберите тот же, что и у веб-сервиса
-    ipAllowList: []  # разрешить подключения только из внутренней сети Render (безопасно)
+    region: ohio
+    ipAllowList: []

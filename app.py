@@ -6,7 +6,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from config import Config
 
-# !!! ИСПРАВЛЕНИЕ: указываем имя папки со статикой как 'staticCSS'
 app = Flask(__name__, static_folder='staticCSS')
 app.config.from_object(Config)
 
@@ -14,6 +13,9 @@ db = SQLAlchemy(app)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
+with app.app_context():
+    db.create_all()
+    print("Таблицы созданы (или уже существуют).")
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -90,6 +92,10 @@ def get_ideas():
 def create_idea():
     try:
         data = request.json
+        # Простейшая валидация
+        if not data.get('title') or not data.get('description'):
+            return jsonify({'success': False, 'error': 'Заполните все поля'}), 400
+
         idea = Idea(
             title=data['title'],
             description=data['description'],
@@ -102,7 +108,9 @@ def create_idea():
         db.session.commit()
         return jsonify({'success': True, 'id': idea.id})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        # 👇 Логируем ошибку в консоль (будет видно в логах Render)
+        print(f"❌ Ошибка при создании идеи: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/ideas/<int:idea_id>', methods=['GET'])
 def get_idea(idea_id):
@@ -226,6 +234,7 @@ def get_statistics():
     })
 
 if __name__ == '__main__':
+    # Создаём папки (если их нет) – это можно оставить, т.к. выполняется только локально
     instance_path = os.path.join(os.path.dirname(__file__), 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
@@ -236,35 +245,9 @@ if __name__ == '__main__':
         os.makedirs(uploads_path)
         print(f"Создана папка uploads: {uploads_path}")
 
-    with app.app_context():
-        db.create_all()
-        print("База данных инициализирована")
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                email='admin@ecocity-rubtsovsk.ru',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
-            )
-            db.session.add(admin)
-            test_idea = Idea(
-                title='Тестовая идея для Рубцовска',
-                description='Это тестовая идея для проверки работы системы',
-                category='озеленение',
-                latitude=51.527623,
-                longitude=81.217673,
-                user_id=1,
-                votes_count=5,
-                status='approved'
-            )
-            db.session.add(test_idea)
-            db.session.commit()
-            print('Администратор создан: логин - admin, пароль - admin123')
-            print('Добавлена тестовая идея')
-        else:
-            total_ideas = Idea.query.count()
-            total_users = User.query.count()
-            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
+    # 👇 УБИРАЕМ db.create_all() отсюда – теперь оно выполняется выше
+    # with app.app_context():
+    #     db.create_all()   # <-- больше не нужно здесь
 
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
