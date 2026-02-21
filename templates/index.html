@@ -2,11 +2,59 @@
 
 {% block title %}Главная - {{ super() }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .gradient-text {
+        background: linear-gradient(135deg, #2e7d32, #4caf50, #81c784);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        color: transparent;
+        font-weight: bold;
+    }
+    /* Стили для блока "Как это работает?" */
+    .how-it-works-card {
+        background: linear-gradient(145deg, #f8f9fa, #ffffff);
+        border: none;
+        box-shadow: 0 10px 20px rgba(0,100,0,0.1);
+    }
+    .how-it-works-header {
+        background: linear-gradient(145deg, #2e7d32, #4caf50);
+        color: white;
+        border-radius: 8px 8px 0 0 !important;
+    }
+    .how-it-works-header h5 {
+        color: white;
+        font-weight: 600;
+    }
+    .how-it-works-item {
+        border: none;
+        border-bottom: 1px solid rgba(0,100,0,0.1);
+        background: transparent;
+    }
+    .how-it-works-item:last-child {
+        border-bottom: none;
+    }
+    .how-it-works-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: #e8f5e9;
+        border-radius: 50%;
+        color: #2e7d32;
+        font-size: 1.5rem;
+        margin-right: 15px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-md-8">
         <div class="jumbotron bg-light p-5 rounded-3">
-            <h1 class="display-4">Добро пожаловать в Эко-Город Рубцовск!</h1>
+            <h1 class="display-4 gradient-text">Добро пожаловать в Эко-Город Рубцовск!</h1>
             <p class="lead">Цифровая платформа для участия жителей в устойчивом развитии нашего города.</p>
             <hr class="my-4">
             <p>Предлагайте идеи, сообщайте о проблемах, голосуйте за проекты и участвуйте в развитии Рубцовска.</p>
@@ -101,39 +149,44 @@
     </div>
 </div>
 
+<!-- Обновлённый блок "Как это работает?" -->
 <div class="row mt-5">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Как это работает?</h5>
+        <div class="card how-it-works-card">
+            <div class="card-header how-it-works-header">
+                <h5 class="card-title mb-0"><i class="bi bi-question-circle me-2"></i>Как это работает?</h5>
             </div>
-            <div class="card-body">
-                <ol class="list-group list-group-numbered">
-                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <div class="ms-2 me-auto">
-                            <div class="fw-bold">Регистрация</div>
-                            Зарегистрируйтесь на платформе, чтобы получить возможность добавлять идеи и голосовать
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item how-it-works-item d-flex align-items-center p-3">
+                        <span class="how-it-works-icon"><i class="bi bi-person-plus"></i></span>
+                        <div>
+                            <div class="fw-bold fs-6">Регистрация</div>
+                            <p class="mb-0 small text-muted">Зарегистрируйтесь на платформе, чтобы добавлять идеи и голосовать</p>
                         </div>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <div class="ms-2 me-auto">
-                            <div class="fw-bold">Добавление идеи</div>
-                            Нажмите "Добавить идею", выберите место на карте, опишите ваше предложение
+                    </div>
+                    <div class="list-group-item how-it-works-item d-flex align-items-center p-3">
+                        <span class="how-it-works-icon"><i class="bi bi-plus-circle"></i></span>
+                        <div>
+                            <div class="fw-bold fs-6">Добавление идеи</div>
+                            <p class="mb-0 small text-muted">Нажмите "Добавить идею", выберите место на карте, опишите предложение</p>
                         </div>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <div class="ms-2 me-auto">
-                            <div class="fw-bold">Обсуждение и голосование</div>
-                            Другие пользователи могут комментировать и голосовать за вашу идею
+                    </div>
+                    <div class="list-group-item how-it-works-item d-flex align-items-center p-3">
+                        <span class="how-it-works-icon"><i class="bi bi-chat-dots"></i></span>
+                        <div>
+                            <div class="fw-bold fs-6">Обсуждение и голосование</div>
+                            <p class="mb-0 small text-muted">Комментируйте и голосуйте за идеи других пользователей</p>
                         </div>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-start">
-                        <div class="ms-2 me-auto">
-                            <div class="fw-bold">Реализация</div>
-                            Идеи с наибольшей поддержкой передаются администрации для рассмотрения и реализации
+                    </div>
+                    <div class="list-group-item how-it-works-item d-flex align-items-center p-3">
+                        <span class="how-it-works-icon"><i class="bi bi-check2-circle"></i></span>
+                        <div>
+                            <div class="fw-bold fs-6">Реализация</div>
+                            <p class="mb-0 small text-muted">Идеи с наибольшей поддержкой передаются администрации для рассмотрения</p>
                         </div>
-                    </li>
-                </ol>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
