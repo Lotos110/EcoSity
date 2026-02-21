@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Эко-Город Рубцовск{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Добавлен favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}" sizes="16x16">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark" style="background: linear-gradient(to right, #2e7d32, #4caf50);">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-tree"></i> Эко-Город Рубцовск
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Главная</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('map_view') }}">Карта идей</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('city_info') }}">О Рубцовске</a>
+                    </li>
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#addIdeaModal">
+                                <i class="bi bi-plus-circle"></i> Добавить идею
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                                    <i class="bi bi-speedometer2"></i> Панель админа
+                                </a>
+                            </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <span class="nav-link">Привет, {{ current_user.username }}</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="bi bi-box-arrow-right"></i> Выйти
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('login') }}">
+                                <i class="bi bi-box-arrow-in-right"></i> Войти
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('register') }}">
+                                <i class="bi bi-person-plus"></i> Регистрация
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Модальное окно для добавления идеи -->
+    <div class="modal fade" id="addIdeaModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Добавить новую идею для Рубцовска</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="ideaForm">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Название идеи *</label>
+                            <input type="text" class="form-control" id="title" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Категория *</label>
+                            <select class="form-select" id="category" required>
+                                <option value="">Выберите категорию</option>
+                                <option value="спорт">Спорт</option>
+                                <option value="культура">Культура</option>
+                                <option value="детский досуг">Детский досуг</option>
+                                <option value="экология">Экология</option>
+                                <option value="транспорт">Транспорт</option>
+                                <option value="озеленение">Озеленение</option>
+                                <option value="освещение">Освещение</option>
+                                <option value="безопасность">Безопасность</option>
+                                <option value="другое">Другое</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание *</label>
+                            <textarea class="form-control" id="description" rows="4" required 
+                                      placeholder="Опишите вашу идею подробно..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Выберите место на карте Рубцовска *</label>
+                            <div id="mapPicker" style="height: 300px; border: 1px solid #ddd; border-radius: 4px;"></div>
+                            <div class="mt-2">
+                                <small class="text-muted">Широта: </small>
+                                <input type="text" class="form-control d-inline w-auto" id="latitude" readonly>
+                                <small class="text-muted">Долгота: </small>
+                                <input type="text" class="form-control d-inline w-auto" id="longitude" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="attachments" class="form-label">Прикрепить файлы (опционально)</label>
+                            <input type="file" class="form-control" id="attachments" multiple>
+                            <small class="text-muted">Можно прикрепить фото, схемы или 3D-модели (PNG, JPG, PDF, OBJ, FBX, GLB)</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-success" onclick="submitIdea()">
+                        <i class="bi bi-send"></i> Отправить идею
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-light text-center text-lg-start mt-5">
+        <div class="container p-4">
+            <div class="row">
+                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Эко-Город Рубцовск</h5>
+                    <p>Цифровая платформа для участия жителей в устойчивом развитии города</p>
+                    <p>Пилотный проект для города Рубцовск</p>
+                </div>
+                <div class="col-lg-6 col-md-12 mb-4 mb-md-0">
+                    <h5 class="text-uppercase">Контакты</h5>
+                    <p>Email: ecocity@rubtsovsk.ru<br>Телефон: +7 (123) 123-45-67</p>
+                    <p>Адрес: г. Рубцовск, ул. Ленина, 123</p>
+                </div>
+            </div>
+        </div>
+        <div class="text-center p-3" style="background-color: rgba(0, 0, 0, 0.05);">
+            © 2026 Эко-Город Рубцовск. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script>
+        // Инициализация карты в модальном окне
+        document.addEventListener('DOMContentLoaded', function() {
+            const modal = document.getElementById('addIdeaModal');
+            if (modal) {
+                modal.addEventListener('shown.bs.modal', function() {
+                    if (!window.pickerMap) {
+                        window.pickerMap = L.map('mapPicker').setView([51.527623, 81.217673], 14);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap'
+                        }).addTo(window.pickerMap);
+                        
+                        window.pickerMap.on('click', function(e) {
+                            document.getElementById('latitude').value = e.latlng.lat.toFixed(6);
+                            document.getElementById('longitude').value = e.latlng.lng.toFixed(6);
+                        });
+                    }
+                });
+            }
+        });
+
+        // Функция отправки идеи
+        async function submitIdea() {
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const category = document.getElementById('category').value;
+            const latitude = document.getElementById('latitude').value;
+            const longitude = document.getElementById('longitude').value;
+            const files = document.getElementById('attachments').files;
+
+            if (!title || !description || !category || !latitude || !longitude) {
+                alert('Заполните все обязательные поля и выберите место на карте');
+                return;
+            }
+
+            const ideaData = {
+                title: title,
+                description: description,
+                category: category,
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude)
+            };
+
+            try {
+                const response = await fetch('/api/ideas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(ideaData)
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Закрываем модальное окно
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addIdeaModal'));
+                    modal.hide();
+                    
+                    // Очищаем форму
+                    document.getElementById('title').value = '';
+                    document.getElementById('description').value = '';
+                    document.getElementById('category').selectedIndex = 0;
+                    document.getElementById('latitude').value = '';
+                    document.getElementById('longitude').value = '';
+                    document.getElementById('attachments').value = '';
+                    
+                    alert('Идея успешно добавлена!');
+                    
+                    // Обновляем карту если мы на странице карты
+                    if (typeof loadIdeas === 'function') {
+                        loadIdeas();
+                    }
+                } else {
+                    alert('Ошибка: ' + data.error);
+                }
+            } catch (error) {
+                alert('Ошибка при отправке идеи');
+                console.error('Error:', error);
+            }
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
