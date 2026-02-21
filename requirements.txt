@@ -4,4 +4,4 @@ Flask-Login==0.6.2
 Werkzeug==2.3.7
 gunicorn==23.0.0
 pg8000==1.30.5
-sqlalchemy-pg8000==1.1.0
+
