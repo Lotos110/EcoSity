@@ -31,13 +31,6 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('city_info') }}">О Рубцовске</a>
                     </li>
-                    {% if current_user.is_authenticated %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#addIdeaModal">
-                                <i class="bi bi-plus-circle"></i> Добавить идею
-                            </a>
-                        </li>
-                    {% endif %}
                 </ul>
                 <ul class="navbar-nav">
                     {% if current_user.is_authenticated %}
