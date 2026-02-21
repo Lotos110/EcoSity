@@ -40,12 +40,6 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Скрыть атрибуцию Leaflet */
-.leaflet-control-attribution {
-    box-shadow: none;
-    display: none;
-}
-
 /* Стили для форм */
 .form-control:focus {
     border-color: #4caf50;
@@ -57,8 +51,14 @@ body {
     .jumbotron {
         padding: 2rem 1rem !important;
     }
-
+    
     .display-4 {
         font-size: 2rem;
     }
+}
+
+/* Скрываем атрибуцию Leaflet (значок OpenStreetMap) */
+.leaflet-control-attribution {
+    box-shadow: none;
+    display: none;
 }
