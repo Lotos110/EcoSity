@@ -15,6 +15,7 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Модели
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -41,6 +42,57 @@ class Idea(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# Создаём папку для загрузок (если её нет) – выполняется один раз при запуске
+uploads_path = os.path.join(os.path.dirname(__file__), 'staticCSS', 'uploads')
+if not os.path.exists(uploads_path):
+    os.makedirs(uploads_path)
+    print(f"Создана папка uploads: {uploads_path}")
+
+# Флаг для однократной инициализации базы данных
+_db_initialized = False
+
+@app.before_request
+def initialize_database():
+    global _db_initialized
+    if not _db_initialized:
+        # Создаём таблицы, если их ещё нет
+        db.create_all()
+        print("Таблицы базы данных проверены/созданы")
+
+        # Создаём администратора, если его нет
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                email='admin@ecocity-rubtsovsk.ru',
+                password_hash=generate_password_hash('admin123'),
+                is_admin=True
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print('Администратор создан: логин - admin, пароль - admin123')
+
+            # Добавляем тестовую идею (опционально, можно закомментировать)
+            test_idea = Idea(
+                title='Тестовая идея для Рубцовска',
+                description='Это тестовая идея для проверки работы системы',
+                category='озеленение',
+                latitude=51.527623,
+                longitude=81.217673,
+                user_id=admin.id,
+                votes_count=5,
+                status='approved'
+            )
+            db.session.add(test_idea)
+            db.session.commit()
+            print('Добавлена тестовая идея')
+        else:
+            total_ideas = Idea.query.count()
+            total_users = User.query.count()
+            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
+
+        _db_initialized = True
+
+# Маршруты
 @app.route('/')
 def index():
     recent_ideas = Idea.query.order_by(Idea.created_at.desc()).limit(3).all()
@@ -151,7 +203,7 @@ def register():
         login_user(user)
         flash(f'Добро пожаловать, {username}!', 'success')
         return redirect(url_for('index'))
-    return render_template('auth/register.html')
+    return render_template('auth/register.html')  # Убедитесь, что шаблон лежит по правильному пути
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -167,7 +219,7 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Неверное имя пользователя или пароль')
-    return render_template('auth/login.html')
+    return render_template('auth/login.html')  # Убедитесь, что шаблон лежит по правильному пути
 
 @app.route('/logout')
 @login_required
@@ -190,7 +242,7 @@ def admin_dashboard():
         Idea.status,
         db.func.count(Idea.id)
     ).group_by(Idea.status).all()
-    return render_template('admin/dashboard.html',
+    return render_template('admin/dashboard.html',  # Убедитесь, что шаблон лежит по правильному пути
                            total_ideas=total_ideas,
                            total_users=total_users,
                            categories=categories,
@@ -226,47 +278,7 @@ def get_statistics():
     })
 
 if __name__ == '__main__':
-    instance_path = os.path.join(os.path.dirname(__file__), 'instance')
-    if not os.path.exists(instance_path):
-        os.makedirs(instance_path)
-        print(f"Создана папка instance: {instance_path}")
-
-    # ✅ Исправлено: путь к папке загрузок теперь ведёт в staticCSS/uploads
-    uploads_path = os.path.join(os.path.dirname(__file__), 'staticCSS', 'uploads')
-    if not os.path.exists(uploads_path):
-        os.makedirs(uploads_path)
-        print(f"Создана папка uploads: {uploads_path}")
-
-    with app.app_context():
-        db.create_all()
-        print("База данных инициализирована")
-        if not User.query.filter_by(username='admin').first():
-            admin = User(
-                username='admin',
-                email='admin@ecocity-rubtsovsk.ru',
-                password_hash=generate_password_hash('admin123'),
-                is_admin=True
-            )
-            db.session.add(admin)
-            test_idea = Idea(
-                title='Тестовая идея для Рубцовска',
-                description='Это тестовая идея для проверки работы системы',
-                category='озеленение',
-                latitude=51.527623,
-                longitude=81.217673,
-                user_id=1,
-                votes_count=5,
-                status='approved'
-            )
-            db.session.add(test_idea)
-            db.session.commit()
-            print('Администратор создан: логин - admin, пароль - admin123')
-            print('Добавлена тестовая идея')
-        else:
-            total_ideas = Idea.query.count()
-            total_users = User.query.count()
-            print(f'Загружено из базы: {total_users} пользователей, {total_ideas} идей')
-
+    # Этот блок выполняется только при локальном запуске python app.py
     print(f"Сервер Эко-Город для Рубцовска запускается...")
     print(f"Координаты центра карты: {app.config['MAP_CENTER']}")
     print(f"База данных: {app.config['SQLALCHEMY_DATABASE_URI']}")
