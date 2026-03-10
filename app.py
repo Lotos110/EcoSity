@@ -461,6 +461,14 @@ def admin_stats():
         'top_users': top_users
     })
 
+with app.app_context():
+    # Проверяем, есть ли колонка views_count
+    inspector = db.inspect(db.engine)
+    columns = [col['name'] for col in inspector.get_columns('idea')]
+    if 'views_count' not in columns:
+        db.session.execute('ALTER TABLE idea ADD COLUMN views_count INTEGER DEFAULT 0')
+        db.session.commit()
+        print("Колонка views_count добавлена!")
 
 # =========================
 # ЗАПУСК
