@@ -1,0 +1,10 @@
+{% extends "<base.HTML"%}
+{% block contend%}
+
+<h1> Город идей {{name}}</h1>
+
+<div>
+    {%for name in names_page%}
+    <h2>{{name}}</h2>
+    {%endfor%}
+</div>
