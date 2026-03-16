@@ -79,7 +79,6 @@
                             <th>Автор</th>
                             <th>Статус</th>
                             <th>Голоса</th>
-                            <th>Просмотры</th>
                             <th>Дата</th>
                             <th>Действия</th>
                         </tr>
@@ -144,7 +143,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- JS-код из предыдущей версии оставляем без изменений -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 let currentPage = 1;
@@ -189,7 +187,6 @@ function updateIdeasTable(ideas) {
             <td>${idea.author}</td>
             <td><span class="badge ${statusBadge}">${getStatusText(idea.status)}</span></td>
             <td>${idea.votes_count}</td>
-            <td>${idea.views_count}</td>
             <td>${new Date(idea.created_at).toLocaleDateString('ru-RU')}</td>
             <td>
                 <div class="btn-group btn-group-sm" role="group">
