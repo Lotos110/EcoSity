@@ -36,7 +36,6 @@ class Idea(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     votes_count = db.Column(db.Integer, default=0)
-    views_count = db.Column(db.Integer, default=0)
     author = db.relationship('User', backref='ideas', lazy=True)
 
 
@@ -107,8 +106,6 @@ def city_info():
     return render_template('city.html')
 
 
-
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -154,7 +151,6 @@ def logout():
     return redirect(url_for('index'))
 
 
-
 @app.route('/api/ideas')
 def get_ideas():
     ideas = Idea.query.all()
@@ -169,7 +165,6 @@ def get_ideas():
             'longitude': idea.longitude,
             'status': idea.status,
             'votes_count': idea.votes_count,
-            'views_count': idea.views_count,
             'author': idea.author.username,
             'created_at': idea.created_at.isoformat()
         })
@@ -196,9 +191,7 @@ def create_idea():
 @app.route('/api/ideas/<int:idea_id>')
 def get_idea(idea_id):
     idea = Idea.query.get_or_404(idea_id)
-    # Увеличиваем счётчик просмотров
-    idea.views_count += 1
-    db.session.commit()
+    # Увеличение счётчика просмотров удалено
     return jsonify({
         'id': idea.id,
         'title': idea.title,
@@ -208,7 +201,6 @@ def get_idea(idea_id):
         'longitude': idea.longitude,
         'status': idea.status,
         'votes_count': idea.votes_count,
-        'views_count': idea.views_count,
         'author': idea.author.username,
         'created_at': idea.created_at.isoformat()
     })
@@ -244,7 +236,7 @@ def admin_dashboard():
     ).group_by(Idea.status).all()
 
     return render_template(
-        'dashboard.html',  # файл лежит в корне templates
+        'dashboard.html',
         total_ideas=total_ideas,
         total_users=total_users,
         total_votes=total_votes,
@@ -321,7 +313,6 @@ def admin_all_ideas():
             'author': idea.author.username,
             'status': idea.status,
             'votes_count': idea.votes_count,
-            'views_count': idea.views_count,
             'created_at': idea.created_at.isoformat()
         })
 
