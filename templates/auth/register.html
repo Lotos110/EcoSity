@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Регистрация в Эко-Городе Рубцовск</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('register') }}">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">Имя пользователя *</label>
+                            <input type="text" class="form-control" id="username" name="username" required>
+                            <small class="text-muted">Будет использоваться для входа</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Email *</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">Пароль *</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <small class="text-muted">Минимум 6 символов</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="confirm_password" class="form-label">Подтверждение пароля *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="full_name" class="form-label">Полное имя</label>
+                            <input type="text" class="form-control" id="full_name" name="full_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">Город</label>
+                            <input type="text" class="form-control" id="city" name="city" value="Рубцовск" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="newsletter" name="newsletter" checked>
+                            <label class="form-check-label" for="newsletter">
+                                Получать уведомления о новых проектах и обновлениях
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <small>
+                            <i class="bi bi-info-circle"></i> Регистрируясь, вы соглашаетесь с правилами участия в платформе "Эко-Город Рубцовск".
+                            Ваши данные будут использоваться только для функционирования платформы.
+                        </small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-person-plus"></i> Зарегистрироваться
+                    </button>
+                </form>
+                <div class="text-center mt-3">
+                    <p>Уже есть аккаунт? <a href="{{ url_for('login') }}">Войдите</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

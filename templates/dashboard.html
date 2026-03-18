@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Админ-панель - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4 mb-4 text-success fw-bold">
+        <i class="bi bi-speedometer2 me-2"></i>Панель управления
+    </h1>
+
+    <!-- Карточки статистики -->
+    <div class="row g-4 mb-5">
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow h-100 py-2" style="border-left: 4px solid #28a745 !important;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">Идей</div>
+                            <div class="h2 mb-0 fw-bold">{{ total_ideas }}</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="bi bi-lightbulb display-4 text-success opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow h-100 py-2" style="border-left: 4px solid #007bff !important;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">Пользователей</div>
+                            <div class="h2 mb-0 fw-bold">{{ total_users }}</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="bi bi-people display-4 text-primary opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card border-0 shadow h-100 py-2" style="border-left: 4px solid #ffc107 !important;">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-8">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">Голосов</div>
+                            <div class="h2 mb-0 fw-bold">{{ total_votes }}</div>
+                        </div>
+                        <div class="col-4 text-end">
+                            <i class="bi bi-hand-thumbs-up display-4 text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Идеи по категориям -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-tags me-2"></i>Идеи по категориям
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Категория</th>
+                                <th class="text-end">Количество</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for category, count in categories %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-secondary">{{ category|capitalize }}</span>
+                                </td>
+                                <td class="text-end fw-bold">{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Идеи по статусам -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-pie-chart me-2"></i>Идеи по статусам
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-hover table-striped align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Статус</th>
+                                <th class="text-end">Количество</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for status, count in statuses %}
+                            <tr>
+                                <td>
+                                    {% if status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">На рассмотрении</span>
+                                    {% elif status == 'approved' %}
+                                        <span class="badge bg-success">Одобрено</span>
+                                    {% elif status == 'rejected' %}
+                                        <span class="badge bg-danger">Отклонено</span>
+                                    {% elif status == 'implemented' %}
+                                        <span class="badge bg-info">Реализовано</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end fw-bold">{{ count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые действия -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-lightning-charge me-2"></i>Быстрые действия
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('admin_ideas') }}" class="btn btn-success">
+                            <i class="bi bi-list-ul me-1"></i>Управление идеями
+                        </a>
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-success">
+                            <i class="bi bi-people me-1"></i>Управление пользователями
+                        </a>
+                        <a href="{{ url_for('admin_statistics') }}" class="btn btn-outline-success">
+                            <i class="bi bi-graph-up me-1"></i>Детальная статистика
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
