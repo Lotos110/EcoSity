@@ -9,7 +9,9 @@ class Config:
     if database_url:
         # Заменяем postgres:// на postgresql:// если нужно
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-        # Для psycopg2 не нужно добавлять +psycopg2, оставляем как есть
+        # Вставляем +pg8000 после postgresql
+        if database_url.startswith('postgresql://'):
+            database_url = 'postgresql+pg8000://' + database_url[len('postgresql://'):]
         SQLALCHEMY_DATABASE_URI = database_url
     else:
         # Локально используем SQLite
