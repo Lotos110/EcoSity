@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block title %}Управление идеями - Админ панель{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <h1 class="mt-4 mb-4 text-success fw-bold">
+        <i class="bi bi-list-ul me-2"></i>Управление идеями
+    </h1>
+
+    <!-- Фильтры и поиск -->
+    <div class="card shadow border-0 mb-4">
+        <div class="card-header bg-success text-white">
+            <h6 class="m-0 fw-bold">
+                <i class="bi bi-funnel me-2"></i>Фильтры и поиск
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <input type="text" id="searchInput" class="form-control" placeholder="Поиск по названию...">
+                </div>
+                <div class="col-md-2">
+                    <select id="statusFilter" class="form-select">
+                        <option value="">Все статусы</option>
+                        <option value="pending">На рассмотрении</option>
+                        <option value="approved">Одобрено</option>
+                        <option value="rejected">Отклонено</option>
+                        <option value="implemented">Реализовано</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select id="categoryFilter" class="form-select">
+                        <option value="">Все категории</option>
+                        <option value="спорт">Спорт</option>
+                        <option value="культура">Культура</option>
+                        <option value="детский досуг">Детский досуг</option>
+                        <option value="экология">Экология</option>
+                        <option value="транспорт">Транспорт</option>
+                        <option value="озеленение">Озеленение</option>
+                        <option value="освещение">Освещение</option>
+                        <option value="безопасность">Безопасность</option>
+                        <option value="другое">Другое</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select id="sortBy" class="form-select">
+                        <option value="newest">Сначала новые</option>
+                        <option value="oldest">Сначала старые</option>
+                        <option value="votes">По голосам</option>
+                        <option value="title">По названию</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-success w-100" onclick="loadIdeas()">
+                        <i class="bi bi-search me-1"></i>Поиск
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Массовые действия -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <button class="btn btn-warning btn-sm" onclick="bulkChangeStatus()">
+                <i class="bi bi-pencil"></i> Изменить статус выбранных
+            </button>
+        </div>
+    </div>
+
+    <!-- Список идей -->
+    <div class="card shadow border-0">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h6 class="m-0 fw-bold">
+                <i class="bi bi-grid me-2"></i>Все идеи
+            </h6>
+            <span class="badge bg-light text-dark" id="totalIdeasCount">0 идей</span>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th><input type="checkbox" id="selectAll"></th>
+                            <th>ID</th>
+                            <th>Название</th>
+                            <th>Категория</th>
+                            <th>Автор</th>
+                            <th>Статус</th>
+                            <th>Голоса</th>
+                            <th>Дата</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ideasTableBody">
+                        <!-- JS подставит строки -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Пагинация -->
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center" id="pagination"></ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для ответа администрации -->
+<div class="modal fade" id="responseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-chat-dots me-2"></i>Обратная связь для пользователя
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="responseForm">
+                    <input type="hidden" id="responseIdeaId">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Статус:</label>
+                        <select id="responseStatus" class="form-select" required>
+                            <option value="approved">Одобрить</option>
+                            <option value="rejected">Отклонить</option>
+                            <option value="implemented">Отметить как реализованное</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Комментарий администрации:</label>
+                        <textarea id="adminComment" class="form-control" rows="4"
+                                  placeholder="Объясните решение..."></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="sendEmail">
+                        <label class="form-check-label" for="sendEmail">
+                            Отправить уведомление на email автора
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" onclick="submitResponse()">
+                    <i class="bi bi-send me-1"></i>Отправить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let currentPage = 1;
+const pageSize = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadIdeas();
+
+    // Обработчик "Выбрать все"
+    document.getElementById('selectAll').addEventListener('change', function(e) {
+        document.querySelectorAll('.idea-checkbox').forEach(cb => cb.checked = e.target.checked);
+    });
+});
+
+function loadIdeas(page = 1) {
+    currentPage = page;
+    const search = document.getElementById('searchInput').value;
+    const status = document.getElementById('statusFilter').value;
+    const category = document.getElementById('categoryFilter').value;
+    const sortBy = document.getElementById('sortBy').value;
+
+    fetch(`/api/admin/all-ideas?page=${page}&limit=${pageSize}&search=${search}&status=${status}&category=${category}&sort=${sortBy}`)
+        .then(response => response.json())
+        .then(data => {
+            updateIdeasTable(data.ideas);
+            updatePagination(data.total, data.pages);
+            document.getElementById('totalIdeasCount').textContent = `${data.total} идей`;
+        });
+}
+
+function updateIdeasTable(ideas) {
+    const tbody = document.getElementById('ideasTableBody');
+    tbody.innerHTML = '';
+    ideas.forEach(idea => {
+        const row = document.createElement('tr');
+        let statusBadge = '';
+        switch(idea.status) {
+            case 'approved': statusBadge = 'bg-success'; break;
+            case 'rejected': statusBadge = 'bg-danger'; break;
+            case 'implemented': statusBadge = 'bg-info'; break;
+            default: statusBadge = 'bg-warning text-dark';
+        }
+        row.innerHTML = `
+            <td><input type="checkbox" class="idea-checkbox" value="${idea.id}"></td>
+            <td>${idea.id}</td>
+            <td><a href="#" onclick="viewIdeaDetail(${idea.id}); return false;" class="text-decoration-none">${idea.title}</a></td>
+            <td><span class="badge bg-secondary">${idea.category}</span></td>
+            <td>${idea.author}</td>
+            <td><span class="badge ${statusBadge}">${getStatusText(idea.status)}</span></td>
+            <td>${idea.votes_count}</td>
+            <td>${new Date(idea.created_at).toLocaleDateString('ru-RU')}</td>
+            <td>
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-info" onclick="viewIdeaDetail(${idea.id})" title="Просмотр"><i class="bi bi-eye"></i></button>
+                    <button class="btn btn-outline-primary" onclick="openResponseModal(${idea.id})" title="Ответить"><i class="bi bi-chat"></i></button>
+                    <button class="btn btn-outline-warning" onclick="editIdea(${idea.id})" title="Редактировать"><i class="bi bi-pencil"></i></button>
+                    <button class="btn btn-outline-danger" onclick="deleteIdea(${idea.id})" title="Удалить"><i class="bi bi-trash"></i></button>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function getStatusText(status) {
+    const map = { 'pending': 'На рассмотрении', 'approved': 'Одобрено', 'rejected': 'Отклонено', 'implemented': 'Реализовано' };
+    return map[status] || status;
+}
+
+function updatePagination(total, totalPages) {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    // Кнопка "Назад"
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = `<a class="page-link" href="#" onclick="loadIdeas(${currentPage - 1})">Назад</a>`;
+    pagination.appendChild(prevLi);
+    // Страницы
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, currentPage + 2);
+    for (let i = start; i <= end; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#" onclick="loadIdeas(${i})">${i}</a>`;
+        pagination.appendChild(li);
+    }
+    // Кнопка "Вперед"
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+    nextLi.innerHTML = `<a class="page-link" href="#" onclick="loadIdeas(${currentPage + 1})">Вперед</a>`;
+    pagination.appendChild(nextLi);
+}
+
+function viewIdeaDetail(ideaId) { window.open(`/idea/${ideaId}`, '_blank'); }
+function openResponseModal(ideaId) {
+    document.getElementById('responseIdeaId').value = ideaId;
+    new bootstrap.Modal(document.getElementById('responseModal')).show();
+}
+function submitResponse() {
+    const ideaId = document.getElementById('responseIdeaId').value;
+    const status = document.getElementById('responseStatus').value;
+    const comment = document.getElementById('adminComment').value;
+    const sendEmail = document.getElementById('sendEmail').checked;
+    fetch(`/api/admin/ideas/${ideaId}/response`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({status, comment, send_email: sendEmail})
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('responseModal')).hide();
+            loadIdeas(currentPage);
+        }
+    });
+}
+function editIdea(ideaId) { window.location.href = `/admin/ideas/${ideaId}/edit`; }
+function deleteIdea(ideaId) {
+    if (confirm('Удалить идею? Это действие необратимо.')) {
+        fetch(`/api/admin/ideas/${ideaId}`, {method: 'DELETE'})
+            .then(r => r.json()).then(data => { if(data.success) loadIdeas(currentPage); });
+    }
+}
+
+function bulkChangeStatus() {
+    const selected = Array.from(document.querySelectorAll('.idea-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Выберите хотя бы одну идею');
+        return;
+    }
+    const newStatus = prompt('Введите новый статус (pending, approved, rejected, implemented):');
+    if (!newStatus) return;
+    fetch('/api/admin/ideas/bulk-update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({idea_ids: selected, status: newStatus})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadIdeas(currentPage);
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    });
+}
+
+let searchTimeout;
+document.getElementById('searchInput').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => loadIdeas(1), 500);
+});
+</script>
+{% endblock %}
